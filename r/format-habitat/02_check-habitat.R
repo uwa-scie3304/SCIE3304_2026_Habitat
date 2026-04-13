@@ -14,14 +14,14 @@ library(leaflet)
 library(leaflet.minicharts)
 library(here)
 
-name <- "2025-02_Yamatji-Shallow-Bank_stereo-BRUVs"
+name <- "2025-04_Albany-SCIE3304_stereo-BRUVs_benthos-count_habitat_group"
 
-metadata <- read_csv("data/raw/MEG_Labsheets - 2025-02_Yamatji-Shallow-Bank_stereo-BRUVs.csv") %>%
+metadata <- read_csv("data/raw/SCI3304-2025_Metadata.csv") %>%
   dplyr::rename(sample = opcode) %>%
   dplyr::select(sample, longitude_dd, latitude_dd, date_time, location, site, depth_m, successful_count, successful_length, successful_habitat_forwards) %>%
   glimpse()
 
-habitat <- read_csv("data/tidy/2025-02_Yamatji-Shallow-Bank_stereo-BRUVs_benthos-count.csv") %>%
+habitat <- read_csv("data/tidy/2025-04_Albany-SCIE3304_stereo-BRUVs_benthos-count_habitat_group") %>%
   dplyr::mutate(habitat = case_when(
     level_2 %in% "Macroalgae" ~ level_2, 
     level_2 %in% "Seagrasses" ~ level_2, 
@@ -48,7 +48,7 @@ habitat.missing.metadata <- anti_join(habitat, metadata, by = c("sample")) %>%
 metadata.missing.habitat <- anti_join(metadata, habitat, by = c("sample")) %>%
   glimpse()
 
-tidy.relief <- read_csv("data/tidy/2025-02_Yamatji-Shallow-Bank_stereo-BRUVs_benthos-relief.csv") %>%
+tidy.relief <- read_csv("data/tidy/2025-04_Albany-SCIE3304_stereo-BRUVs_benthos-relief_habitat_group.csv") %>%
   uncount(count) %>%
   filter(!is.na(level_5)) %>%
   group_by(sample) %>%
@@ -70,7 +70,7 @@ tidy.habitat <- metadata %>%
   clean_names() %>%
   glimpse()
 
-plot.relief <- read_csv("data/tidy/2025-02_Yamatji-Shallow-Bank_stereo-BRUVs_benthos-relief.csv") %>%
+plot.relief <- read_csv("data/tidy/2025-04_Albany-SCIE3304_stereo-BRUVs_benthos-relief_habitat_group") %>%
   group_by(campaignid, sample, level_5) %>%
   dplyr::summarise(count = sum(count)) %>%
   ungroup() %>%
