@@ -224,7 +224,7 @@ jpg_files <- list.files("full_res", pattern = ".jpg", full.names = TRUE) #test -
 # replace_prefix <- function(file, old_prefix, campaign, jpgname, image_path) {
   # new_name <- str_replace(basename(file), paste0("^", old_prefix), str_c(campaign, "_", jpgname, "_"))
   # file.rename(file, file.path(image_path, new_name))
-}
+
 
 #### Apply to all jpg files
 
@@ -285,7 +285,7 @@ leaflet(final.metadata) %>%
 jpg_files <- list.files(full_res_folder, pattern = ".jpg", full.names = TRUE, ignore.case = TRUE)
 
 ### Set thumbnail folder
-thumbnails_folder <- file.path(getwd(),base_dir, "thumbnails")
+thumbnails_folder <- file.path(getwd(), "thumbnails")
 
 ### Loop through the jpg files, resize, and save as thumbnails
 for (jpg_file in jpg_files) {
@@ -314,8 +314,8 @@ for (jpg_file in jpg_files) {
 ## 9.0 Now let's make deployment folder for each deployment, move these images into these folders and split metadata
 ### Quick checks before moving files to deployment folders
 #### 9.1 Check site names metadata
-unique_sites <- unique(final.metadata$site)
-print(unique_sites)
+unique_samples <- unique(final.metadata$sample)
+print(unique_samples)
 
 ### 9.2 Check number of files in full res and thumbnail folders - should have same number of files in each
 #### Get list of jpg files in each folder
@@ -352,23 +352,23 @@ if(setequal(full_res_files, thumbnails_files)) {
 ### 9.3 Now move images from full_res to subfolders in deployment folders
 #### Extract site from 'key' column in 'metadata'
 unique_imgs <- final.metadata %>%
-  dplyr::select(site, key) %>%
+  dplyr::select(sample, key) %>%
   glimpse()
 
 #### Move all full_res and thumbnail jpgs from full_res and thumbnails folders to full_res and thumbnails subfolders in each deployment 
-path_to_folder <- file.path(getwd(), base_dir)
+path_to_folder <- file.path(getwd())
 
 for (i in 1:nrow(unique_imgs)) {
-  site <- unique_imgs$site[i]
+  sample <- unique_imgs$sample[i]
   key <- unique_imgs$key[i]
   
-  site_folder <- file.path(path_to_folder, site)
-  full_res_subfolder <- file.path(site_folder, "full_res")
-  thumbnails_subfolder <- file.path(site_folder, "thumbnails")
+  sample_folder <- file.path(path_to_folder, sample)
+  full_res_subfolder <- file.path(sample_folder, "full_res")
+  thumbnails_subfolder <- file.path(sample_folder, "thumbnails")
   
   ## Create site, full_res, and thumbnails folders if they don't exist
-  if (!dir.exists(site_folder)) {
-    dir.create(site_folder, recursive = TRUE)
+  if (!dir.exists(sample_folder)) {
+    dir.create(sample_folder, recursive = TRUE)
   }
   if (!dir.exists(full_res_subfolder)) {
     dir.create(full_res_subfolder, recursive = TRUE)
@@ -390,24 +390,24 @@ for (i in 1:nrow(unique_imgs)) {
   }
 }
 
-
+campaignid <- "2026-04_SCIE3304_HABITAT_BOSS"
 #### 9.4 Now let's split metadata csv into each deployment folder
-for (site in unique_sites) {
+for (sample in unique_samples) {
   ## Subset final metadata for the current site
-  site_metadata <- final.metadata[final.metadata$site == site, ]
+  sample_metadata <- final.metadata[final.metadata$sample == sample, ]
   
   ## Remove the site column
-  site_metadata <- site_metadata[, !names(site_metadata) %in% "site"]
+  sample_metadata <- sample_metadata[, !names(sample_metadata) %in% "sample"]
   
   ## Define the file name and path
-  file_name <- paste0(campaign, "_", platform, "_", site, "_metadata.csv")
-  file_path <- file.path(path_to_folder, site, file_name)
+  file_name <- paste0(campaignid, "_", "_", sample, "_metadata.csv")
+  file_path <- file.path(path_to_folder, sample, file_name)
   
   ## Create the directory if it doesn't exist
   dir.create(dirname(file_path), recursive = TRUE, showWarnings = FALSE)
   
   ## Write the subsetted metadata to a CSV file
-  write.csv(site_metadata, file_path, row.names = FALSE)
+  write.csv(sample_metadata, file_path, row.names = FALSE)
 }
 
 ### 10 Run some checks to makes sure each deployment folder has correct number of files 
