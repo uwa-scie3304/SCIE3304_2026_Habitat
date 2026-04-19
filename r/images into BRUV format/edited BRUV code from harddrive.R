@@ -84,7 +84,7 @@ metadata <- googlesheets4::read_sheet(url, sheet = "SCIE3304-2026_Metadata")%>%
   
   
   #rename(site = site) %>%
-  mutate(sample = NULL) %>%
+  mutate(site = NULL) %>%
   mutate( timestamp_start = parse_datetime(date_time)) %>%  #convert time date to UTC
   #with_tz("UTC") %>%
   mutate(timestamp_start = format(timestamp_start, "%Y-%m-%dT%H:%M:%S %Z"))%>% #this part does not work
@@ -99,8 +99,8 @@ metadata <- googlesheets4::read_sheet(url, sheet = "SCIE3304-2026_Metadata")%>%
   mutate(      data.funder = data.funder) %>%
   mutate(        data.grant_no = data.grant_no) %>% #optional. remove if not used # )%>%
   mutate(timestamp_start = parse_datetime(date_time))%>%
-  dplyr::select("site","timestamp_start":"data.grant_no")%>%
-  mutate(site = as.character(site)) %>%
+  dplyr::select("sample","timestamp_start":"data.grant_no")%>%
+  # mutate(site = as.character(site)) %>%
   glimpse()
 str(metadata)
 
@@ -248,11 +248,12 @@ final.metadata <- list.files(path = full_res_folder, pattern = "\\.jpg$", ignore
   mutate(
     image = str_extract(image.path, "[^/]+$"),
     key = str_remove(image, "\\.jpg$"),
-    site = str_extract(key, "\\d+_\\d+"),
-    site = if_else(str_detect(key, "EXP"), paste0("EXP_", str_extract(site, "\\d+"))#Hack if you have weird text in your drop names
-                   , site)) %>%
-  left_join(metadata, by = 'site') %>%
-  dplyr::select("key","site","timestamp_start","pose.lat","pose.lon","pose.dep":"data.grant_no")%>% #note you may need to change selection if you dont have a grant number
+    sample = str_extract(key, "SAMPLE\\d+"),
+    sample = stringr::str_remove(sample, "SAMPLE")
+    # site = if_else(str_detect(key, "EXP"), paste0("EXP_", str_extract(site, "\\d+"))#Hack if you have weird text in your drop names
+                   , sample) %>%
+  left_join(metadata, by = 'sample') %>%
+  dplyr::select("key","sample","timestamp_start","pose.lat","pose.lon","pose.dep":"data.grant_no")%>% #note you may need to change selection if you dont have a grant number
   glimpse()
 
 nrow(final.metadata)
