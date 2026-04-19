@@ -249,27 +249,27 @@ final.metadata <- list.files(path = full_res_folder, pattern = "\\.jpg$", ignore
     image = str_extract(image.path, "[^/]+$"),
     key = str_remove(image, "\\.jpg$"),
     sample = str_extract(key, "SAMPLE\\d+"),
-    sample = stringr::str_remove(sample, "SAMPLE")
+    sample = as.numeric(stringr::str_remove(sample, "SAMPLE"))
     # site = if_else(str_detect(key, "EXP"), paste0("EXP_", str_extract(site, "\\d+"))#Hack if you have weird text in your drop names
                    , sample) %>%
   left_join(metadata, by = 'sample') %>%
   dplyr::select("key","sample","timestamp_start","pose.lat","pose.lon","pose.dep":"data.grant_no")%>% #note you may need to change selection if you dont have a grant number
   glimpse()
 
-nrow(final.metadata)
+
 #test for 3.4 -> tested and doesnt work for now everything else does above this one 
-final.metadata <- list.files(path = "full_res", pattern = "\\.jpg$", ignore.case = TRUE, full.names = TRUE, recursive = FALSE) %>%
-  as.data.frame() %>%
-  rename(image.path = ".") %>%
-  mutate(
-    image = str_extract(image.path, "[^/]+$"),
-    key = str_remove(image, "\\.jpg$"),
-    site = str_extract(key, "\\d+_\\d+"),
-    site = if_else(str_detect(key, "EXP"), paste0("EXP_", str_extract(site, "\\d+"))#Hack if you have weird text in your drop names
-                   , site)) %>%
-  left_join(metadata, by = 'site') %>%
-  dplyr::select("key","site","timestamp_start","pose.lat","pose.lon","pose.dep":"data.grant_no")%>% #note you may need to change selection if you dont have a grant number
-  glimpse()
+# final.metadata <- list.files(path = "full_res", pattern = "\\.jpg$", ignore.case = TRUE, full.names = TRUE, recursive = FALSE) %>%
+#   as.data.frame() %>%
+#   rename(image.path = ".") %>%
+#   mutate(
+#     image = str_extract(image.path, "[^/]+$"),
+#     key = str_remove(image, "\\.jpg$"),
+#     site = str_extract(key, "\\d+_\\d+"),
+#     site = if_else(str_detect(key, "EXP"), paste0("EXP_", str_extract(site, "\\d+"))#Hack if you have weird text in your drop names
+#                    , site)) %>%
+#   left_join(metadata, by = 'site') %>%
+#   dplyr::select("key","site","timestamp_start","pose.lat","pose.lon","pose.dep":"data.grant_no")%>% #note you may need to change selection if you dont have a grant number
+#   glimpse()
 
 ## 4.0 Plot metadata on map to make sure it looks ok
 ### Create a Leaflet map
