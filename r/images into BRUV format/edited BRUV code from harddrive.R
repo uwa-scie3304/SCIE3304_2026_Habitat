@@ -4,9 +4,9 @@
 ## Creating a folder structure and formatting habitat images from BRUV imagery for SQUIDLE+
 ## Written by jacquomo.monk@utas.edu.au
 
-## This code assumes you have a folder containing all habitat images called "Habitat" and one metadatadata csv file that is
+## This code assumes you have a folder containing all habitat images called "Habitat" and one metadata csv file that is
 ## structured based on GlobalArchive standards found in the CheckEM user guide https://marine-ecology.shinyapps.io/CheckEM/
-## Example data is provided in 202106_Huon_AMP_BRUV_metadatadata_Habitat.zip in this repo
+## Example data is provided in 202106_Huon_AMP_BRUV_metadata_Habitat.zip in this repo
 
 ## To transfer images to IMAS for ingestion into SQUIDLE+. 
 ## Use this transfer code:
@@ -27,9 +27,11 @@ library(googlesheets4)
 
 ## 1.0 Do some setup
 ### Set the path to the folder containing the images
-folder_path <- choose.dir() #navigate to folder
-setwd(folder_path)
+folder_path <- 'D:/images/Habitat' #navigate to folder
+setwd('D:/images/Habitat')
 getwd()
+
+
 
 ### Set up some extra attribute values not in GlobalArchive but needed in SQUIDLE+
 data.camera_model = "GoPro 12 Black"
@@ -39,17 +41,19 @@ data.funder = "UWA"
 data.grant_no = "SCIE3304"
 
 # ### Set up a naming conventions for folders etc. This is important to be the same/consistent between uploads
-institute = "UWA" #set this for your institute. should remain the same between uploads
-platform = "UWA_HabitatBOSS" #set this for each platform format should remain the same between uploads
-campaign = "202607_Albany_BOSS" #set this for each campaign. format should remain the same between uploads
-jpgname = "habitatBOSS" #dont change this unless you are working with a different platform
-full_res = "full_res"#dont change this
+# institute = "UWA" #set this for your institute. should remain the same between uploads
+# platform = "images" #set this for each platform format should remain the same between uploads
+# campaign = "Habitat" #set this for each campaign. format should remain the same between uploads
+# jpgname = "habitatBOSS" #dont change this unless you are working with a different platform
+full_res = "full_res" #dont change this
 thumbnails = "thumbnails" #dont change this
 
 
 ### Set up folder structure
 #### Define the base directory (you can adjust this as needed)
-base_dir <- file.path(institute, platform, campaign)
+# base_dir <- file.path(Habitat)
+base_dir <- folder_path
+# base_dir <- file.path(platform, campaign)
 
 #### Define the folders to create
 folders <- c("full_res", "thumbnails")
@@ -79,13 +83,14 @@ googlesheets4::gs4_auth(email = "tim.langlois@marineecology.io")
 metadata <- googlesheets4::read_sheet(url, sheet = "SCIE3304-2026_Metadata")%>%
   
   
-  mutate(site = sample) %>%
-  # mutate( timestamp_start = parse_datetime(date_time)) %>%  #convert time date to UTC
-  # with_tz("UTC") %>%
-  # mutate(timestamp_start = format(timestamp_start, "%Y-%m-%dT%H:%M:%S %Z"))%>% #this part does not work
+  #rename(site = site) %>%
+  mutate(sample = NULL) %>%
+  mutate( timestamp_start = parse_datetime(date_time)) %>%  #convert time date to UTC
+  #with_tz("UTC") %>%
+  mutate(timestamp_start = format(timestamp_start, "%Y-%m-%dT%H:%M:%S %Z"))%>% #this part does not work
   mutate(pose.lat = latitude_dd) %>%
   mutate(pose.lon	= longitude_dd) %>%
-  mutate( mutatepose.dep = depth_m) %>%
+  mutate(pose.dep = depth_m) %>%
   mutate(pose.data.inclusion_probability = NA) %>%
   mutate(data.spatially_balanced	=  ifelse(!is.na(pose.data.inclusion_probability), "y", "n")) %>% #assign a yes/no based on if there is a inclusion probability
   mutate(        data.camera_model = data.camera_model) %>%
@@ -93,16 +98,14 @@ metadata <- googlesheets4::read_sheet(url, sheet = "SCIE3304-2026_Metadata")%>%
   mutate(       data.contact.secondary = data.contact.secondary) %>%
   mutate(      data.funder = data.funder) %>%
   mutate(        data.grant_no = data.grant_no) %>% #optional. remove if not used # )%>%
-  # mutate(timestamp_start = parse_datetime(date_time))%>%
-  # #dplyr::select("site","timestamp_start":"data.grant_no")%>%
+  mutate(timestamp_start = parse_datetime(date_time))%>%
+  dplyr::select("site","timestamp_start":"data.grant_no")%>%
+  mutate(site = as.character(site)) %>%
   glimpse()
 str(metadata)
 
-files <- list.files(pattern = "\\.csv$")
-print(files)
 
-
-### 2.1 Lets do some basic checks to make sure everything looks right in metadatadata contents
+### 2.1 Lets do some basic checks to make sure everything looks right in metadata contents
 #### Check for missing values
 missing_values <- metadata %>%
   summarise(across(everything(), ~ sum(is.na(.)))) %>%
@@ -155,33 +158,33 @@ if ("pose.dep" %in% colnames(metadata)) {
     print("No empty or negative depth values in 'Depth'.")
   }
 } else {
-  print("Column 'Depth' not found in metadatadata.")
+  print("Column 'Depth' not found in metadata.")
 }
 
 ## 3.0 Now lets work on checking and moving images into folders
 ### 3.1 Extra optional - Sometimes more cleaning is needed. In this example we are removing unnecessary part of a string at end of image file name
 #### List all .jpg files in the folder
-image_names <- list.files(file.path(getwd(),"Habitat"), pattern = "\\(jpg|jpeg|png|gif|bmp|tiff|JPG|JPEG|PNG|GIF|BMP|TIFF)$", full.names = TRUE)
+image_names <- list.files(file.path(getwd()), pattern = "\\.jpg|jpeg|png|gif|bmp|tiff|JPG|JPEG|PNG|GIF|BMP|TIFF$", full.names = TRUE)
 
 #### Remove _Part1 from file names
 cleaned_names <- gsub("_Part1", "", basename(image_names))
 
 #### Create new file paths
-new_file_paths <- file.path(file.path(getwd(),"Habitat"), cleaned_names)
+new_file_paths <- file.path(file.path(getwd()), cleaned_names)
 
 #### Rename files
 file.rename(image_names, new_file_paths)
 
 #### Confirm renamed files
-list.files(file.path(getwd(),"Habitat"))
+list.files(file.path(getwd()))
 
 ### 3.2 Good idea to make sure all all image files to jpg and output into full_res folder
 #### List all images files in the folder
-image_files <- list.files(file.path(getwd(),"Habitat"),pattern = "\\.(jpg|jpeg|png|gif|bmp|tiff|JPG|JPEG|PNG|GIF|BMP|TIFF)$", full.names = TRUE)
+image_files <- list.files(file.path(getwd()),pattern = "\\.jpg|jpeg|png|gif|bmp|tiff|JPG|JPEG|PNG|GIF|BMP|TIFF$", full.names = TRUE)
 
 #### Convert all image files to JPG format
 ##### set output folder
-full_res_folder <- file.path(getwd(), "Habitat", "full_res")
+full_res_folder <- file.path(getwd(), "full_res")
 
 ##### Loop through and rename/move files
 for (file in image_files) {
@@ -218,22 +221,28 @@ jpg_files <- list.files(full_res_folder, pattern = ".jpg", full.names = TRUE)
 jpg_files <- list.files("full_res", pattern = ".jpg", full.names = TRUE) #test -> tested and normaly works 
 
 #### Function to loop through each JPG file and rename it. 
-replace_prefix <- function(file, old_prefix, campaign, jpgname, image_path) {
-  new_name <- str_replace(basename(file), paste0("^", old_prefix), str_c(campaign, "_", jpgname, "_"))
-  file.rename(file, file.path(image_path, new_name))
+# replace_prefix <- function(file, old_prefix, campaign, jpgname, image_path) {
+  # new_name <- str_replace(basename(file), paste0("^", old_prefix), str_c(campaign, "_", jpgname, "_"))
+  # file.rename(file, file.path(image_path, new_name))
 }
 
 #### Apply to all jpg files
-walk(jpg_files, replace_prefix, 
-     old_prefix = "Huon_", #Change this for your data
-     campaign = campaign, #add campaign to file name
-     jpgname = jpgname, 
-     image_path = full_res_folder)
+
+# campaignid <- "2026-04_SCIE3304_HABITAT_BOSS"
+
+# walk(jpg_files, replace_prefix, 
+     # old_prefix = "Prince Harbour", #Change this for your data
+     # campaign = campaignid, #add campaign to file name
+     # jpgname = image_names, #idk if this is right
+     # image_path = full_res_folder)
 
 
-### 3.4 Now lets join jpg images to metadatadata for SQ+
+
+glimpse(metadata)
+
+### 3.4 Now lets join jpg images to metadata for SQ+
 #### Sample data frame
-final.metadatadata <- list.files(path = full_res_folder, pattern = "\\.jpg$", ignore.case = TRUE, full.names = TRUE, recursive = FALSE) %>%
+final.metadata <- list.files(path = full_res_folder, pattern = "\\.jpg$", ignore.case = TRUE, full.names = TRUE, recursive = FALSE) %>%
   as.data.frame() %>%
   rename(image.path = ".") %>%
   mutate(
@@ -246,8 +255,9 @@ final.metadatadata <- list.files(path = full_res_folder, pattern = "\\.jpg$", ig
   dplyr::select("key","site","timestamp_start","pose.lat","pose.lon","pose.dep":"data.grant_no")%>% #note you may need to change selection if you dont have a grant number
   glimpse()
 
+nrow(final.metadata)
 #test for 3.4 -> tested and doesnt work for now everything else does above this one 
-final.metadatadata <- list.files(path = "full_res", pattern = "\\.jpg$", ignore.case = TRUE, full.names = TRUE, recursive = FALSE) %>%
+final.metadata <- list.files(path = "full_res", pattern = "\\.jpg$", ignore.case = TRUE, full.names = TRUE, recursive = FALSE) %>%
   as.data.frame() %>%
   rename(image.path = ".") %>%
   mutate(
@@ -260,14 +270,14 @@ final.metadatadata <- list.files(path = "full_res", pattern = "\\.jpg$", ignore.
   dplyr::select("key","site","timestamp_start","pose.lat","pose.lon","pose.dep":"data.grant_no")%>% #note you may need to change selection if you dont have a grant number
   glimpse()
 
-## 4.0 Plot metadatadata on map to make sure it looks ok
+## 4.0 Plot metadata on map to make sure it looks ok
 ### Create a Leaflet map
-leaflet(final.metadatadata) %>%
+leaflet(final.metadata) %>%
   addTiles() %>%
   addMarkers(lng = ~pose.lon, lat = ~pose.lat, label = ~key)
 
-# ### Write out final metadatadata for later
-# write.csv(final.metadatadata, file.path(file.path(getwd(), base_dir), "202106_Huon_AMP_BRUV_metadatadata_formatted_final.csv"), row.names = FALSE, na = "") ##change name as needed leaving metadatadata_formatted. Optional save if you need it
+# ### Write out final metadata for later
+# write.csv(final.metadata, file.path(file.path(getwd(), base_dir), "202106_Huon_AMP_BRUV_metadata_formatted_final.csv"), row.names = FALSE, na = "") ##change name as needed leaving metadata_formatted. Optional save if you need it
 
 ## 5.0 Now create thumbnails
 ### Create list of full res images
@@ -300,10 +310,10 @@ for (jpg_file in jpg_files) {
 }
 
 
-## 9.0 Now let's make deployment folder for each deployment, move these images into these folders and split metadatadata
+## 9.0 Now let's make deployment folder for each deployment, move these images into these folders and split metadata
 ### Quick checks before moving files to deployment folders
-#### 9.1 Check site names metadatadata
-unique_sites <- unique(final.metadatadata$site)
+#### 9.1 Check site names metadata
+unique_sites <- unique(final.metadata$site)
 print(unique_sites)
 
 ### 9.2 Check number of files in full res and thumbnail folders - should have same number of files in each
@@ -339,8 +349,8 @@ if(setequal(full_res_files, thumbnails_files)) {
 
 
 ### 9.3 Now move images from full_res to subfolders in deployment folders
-#### Extract site from 'key' column in 'metadatadata'
-unique_imgs <- final.metadatadata %>%
+#### Extract site from 'key' column in 'metadata'
+unique_imgs <- final.metadata %>%
   dplyr::select(site, key) %>%
   glimpse()
 
@@ -380,23 +390,23 @@ for (i in 1:nrow(unique_imgs)) {
 }
 
 
-#### 9.4 Now let's split metadatadata csv into each deployment folder
+#### 9.4 Now let's split metadata csv into each deployment folder
 for (site in unique_sites) {
-  ## Subset final metadatadata for the current site
-  site_metadatadata <- final.metadatadata[final.metadatadata$site == site, ]
+  ## Subset final metadata for the current site
+  site_metadata <- final.metadata[final.metadata$site == site, ]
   
   ## Remove the site column
-  site_metadatadata <- site_metadatadata[, !names(site_metadatadata) %in% "site"]
+  site_metadata <- site_metadata[, !names(site_metadata) %in% "site"]
   
   ## Define the file name and path
-  file_name <- paste0(campaign, "_", platform, "_", site, "_metadatadata.csv")
+  file_name <- paste0(campaign, "_", platform, "_", site, "_metadata.csv")
   file_path <- file.path(path_to_folder, site, file_name)
   
   ## Create the directory if it doesn't exist
   dir.create(dirname(file_path), recursive = TRUE, showWarnings = FALSE)
   
-  ## Write the subsetted metadatadata to a CSV file
-  write.csv(site_metadatadata, file_path, row.names = FALSE)
+  ## Write the subsetted metadata to a CSV file
+  write.csv(site_metadata, file_path, row.names = FALSE)
 }
 
 ### 10 Run some checks to makes sure each deployment folder has correct number of files 
