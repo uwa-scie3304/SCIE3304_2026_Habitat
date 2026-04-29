@@ -14,67 +14,82 @@ library(leaflet)
 library(leaflet.minicharts)
 library(here)
 
-name <- "2025-04_Albany-SCIE3304_stereo-BRUVs_benthos-count_habitat_group"
-
-metadata <- read_csv("data/raw/SCI3304-2025_Metadata.csv") %>%
-  dplyr::rename(sample = opcode) %>%
-  dplyr::select(sample, longitude_dd, latitude_dd, date_time, location, site, depth_m, successful_count, successful_length, successful_habitat_forwards) %>%
+# Read in metadata -----
+metadata <- read_csv("data/raw/SCIE3304 Metadata and labsheets - SCIE3304-2026_Metadata.csv") %>%
+  dplyr::select(sample, longitude_dd, latitude_dd, date_time, location, site, depth_m) %>%
+  dplyr::mutate(sample = paste0("2026-04_SCIE3304_HABITAT_BOSS_", sample)) %>%
   glimpse()
 
-habitat <- read_csv("data/tidy/2025-04_Albany-SCIE3304_stereo-BRUVs_benthos-count_habitat_group") %>%
+# Read in habitat ----
+habitat_raw <- read_csv("data/tidy/2026-04_SCIE3304_HABITAT_BOSS_benthos-count.csv") 
+
+# Have a look at the unique habitat types that are present
+unique(habitat_raw$level_2) # "Unscorable" "Seagrasses" "Macroalgae" "Substrate" 
+unique(habitat_raw$level_3)
+unique(habitat_raw$level_4) # You guys don't have any level_4
+unique(habitat_raw$genus) # "Posidonia"  "Halophila"  "Zostera"    "Amphibolis"
+
+# Format the habitat into broad classes ----
+habitat_broad <- habitat_raw %>%
   dplyr::mutate(habitat = case_when(
     level_2 %in% "Macroalgae" ~ level_2, 
     level_2 %in% "Seagrasses" ~ level_2, 
     level_3 %in% "Consolidated (hard)" ~ level_3,
-    level_3 %in% "Unconsolidated (soft)" ~ level_3, 
-    level_2 %in% "Sponges" ~ "Sessile invertebrates", 
-    level_2 %in% "Sessile invertebrates" ~ level_2, 
-    level_2 %in% "Bryozoa" ~ "Sessile invertebrates", 
-    level_2 %in% "Cnidaria" ~ "Sessile invertebrates")) %>%
+    level_3 %in% "Unconsolidated (soft)" ~ level_3,
+    level_2 %in% "Unscorable" ~ level_2)) %>%
+  
   dplyr::select(sample, habitat, count) %>%
   group_by(sample, habitat) %>%
   dplyr::summarise(count = sum(count)) %>%
   dplyr::mutate(total_points_annotated = sum(count)) %>%
   ungroup() %>%
   pivot_wider(names_from = "habitat", values_from = "count", values_fill = 0) %>%
-  dplyr::mutate(reef = Macroalgae + Seagrasses + `Sessile invertebrates` + `Consolidated (hard)`) %>%
-  pivot_longer(cols = c("Macroalgae", "Seagrasses", "Sessile invertebrates", "Consolidated (hard)", "Unconsolidated (soft)", "reef"), names_to = "habitat", values_to = "count") %>%
+  pivot_longer(cols = c("Macroalgae", 
+                        "Seagrasses", 
+                        "Consolidated (hard)", 
+                        "Unconsolidated (soft)"), names_to = "habitat", values_to = "count") %>%
   glimpse()
 
-
-habitat.missing.metadata <- anti_join(habitat, metadata, by = c("sample")) %>%
-  glimpse()
-
-metadata.missing.habitat <- anti_join(metadata, habitat, by = c("sample")) %>%
-  glimpse()
-
-tidy.relief <- read_csv("data/tidy/2025-04_Albany-SCIE3304_stereo-BRUVs_benthos-relief_habitat_group.csv") %>%
-  uncount(count) %>%
-  filter(!is.na(level_5)) %>%
-  group_by(sample) %>%
-  dplyr::summarise(mean.relief = mean(as.numeric(level_5)), sd.relief = sd(as.numeric(level_5), na.rm = T)) %>%
+# Make a dataframe to look at seagrass species -----
+habitat_with_seagrass_species <- habitat_raw %>%
+  dplyr::mutate(habitat = case_when(
+    level_2 %in% "Macroalgae" ~ level_2, 
+    
+    level_2 %in% "Seagrasses" & is.na(genus) ~ "Unknown Seagrasses",
+    
+    !is.na(genus)  ~ paste(genus, "spp"), 
+    
+    level_2 %in% "Unscorable" ~ level_2,
+    level_3 %in% "Consolidated (hard)" ~ level_3,
+    level_3 %in% "Unconsolidated (soft)" ~ level_3)) %>%
+  
+  dplyr::select(sample, habitat, count) %>%
+  group_by(sample, habitat) %>%
+  dplyr::summarise(count = sum(count)) %>%
+  dplyr::mutate(total_points_annotated = sum(count)) %>%
   ungroup() %>%
+  pivot_wider(names_from = "habitat", values_from = "count", values_fill = 0) %>%
+  pivot_longer(cols = !c(total_points_annotated, sample), names_to = "habitat", values_to = "count") %>%
   glimpse()
 
-relief.missing.metadata <- anti_join(tidy.relief, metadata, by = c("sample")) %>%
+habitat.missing.metadata <- anti_join(habitat_broad, metadata, by = c("sample")) %>%
   glimpse()
 
-metadata.missing.relief <- anti_join(metadata, tidy.relief, by = c("sample")) %>%
+metadata.missing.habitat <- anti_join(metadata, habitat_broad, by = c("sample")) %>%
   glimpse()
 
 tidy.habitat <- metadata %>%
-  left_join(habitat) %>%
-  left_join(tidy.relief) %>%
+  left_join(habitat_broad) %>%
   dplyr::mutate(longitude_dd = as.numeric(longitude_dd),
                 latitude_dd = as.numeric(latitude_dd)) %>%
   clean_names() %>%
   glimpse()
 
-plot.relief <- read_csv("data/tidy/2025-04_Albany-SCIE3304_stereo-BRUVs_benthos-relief_habitat_group") %>%
-  group_by(campaignid, sample, level_5) %>%
-  dplyr::summarise(count = sum(count)) %>%
-  ungroup() %>%
-  dplyr::mutate(class.relief = as.factor(level_5)) %>%
+tidy.habitat_seagrasses <- metadata %>%
+  left_join(habitat_with_seagrass_species) %>%
+  dplyr::mutate(longitude_dd = as.numeric(longitude_dd),
+                latitude_dd = as.numeric(latitude_dd)) %>%
+  clean_names() %>%
   glimpse()
 
 ggplot() +
@@ -83,18 +98,14 @@ ggplot() +
   theme_classic()
 
 ggplot() +
-  geom_quasirandom(data = plot.relief, aes(x = count, y = class.relief), groupOnX = F, method = "quasirandom", alpha = 0.25, size = 1.8, width = 0.05) +
-  labs(x = "Number of points", y = "Relief (0-5)") +
+  geom_quasirandom(data = tidy.habitat_seagrasses, aes(x = (count/total_points_annotated), y = habitat), groupOnX = F, method = "quasirandom", alpha = 0.25, size = 1.8, width = 0.2) +
+  labs(x = "Number of points", y = "") +
   theme_classic()
 
+# Leaflet map with broad categories ----
 cols <- colorRampPalette(brewer.pal(12, "Paired"))(length(unique(tidy.habitat$habitat)))
 
-plot.habitat <- tidy.habitat %>%
-  pivot_wider(names_from = "habitat", values_from = "count", names_prefix = "broad.") %>%
-  glimpse()
-
 plot.leaflet <- tidy.habitat %>%
-  filter(!habitat %in% "reef") %>%
   pivot_wider(names_from = "habitat", values_from = "count", names_prefix = "broad.") %>%
   glimpse()
 
@@ -110,7 +121,28 @@ leaflet() %>%
   setView(mean(as.numeric(plot.leaflet$longitude_dd)),
           mean(as.numeric(plot.leaflet$latitude_dd)), zoom = 12)
 
-hab.name <- 'Sessile invertebrates'
+# Leaflet map with seagrass species ----
+
+plot.leaflet <- tidy.habitat_seagrasses %>%
+  pivot_wider(names_from = "habitat", values_from = "count", names_prefix = "broad.") %>%
+  glimpse()
+
+cols_seagrasses <- colorRampPalette(brewer.pal(12, "Paired"))(length(unique(tidy.habitat_seagrasses$habitat)))
+
+leaflet() %>%
+  addTiles(group = "Open Street Map") %>%
+  addProviderTiles('Esri.WorldImagery', group = "World Imagery") %>%
+  addLayersControl(baseGroups = c("World Imagery", "Open Street Map"), options = layersControlOptions(collapsed = FALSE)) %>%
+  addMinicharts(plot.leaflet$longitude_dd, plot.leaflet$latitude_dd, 
+                type = "pie", colorPalette = cols_seagrasses, 
+                chartdata = plot.leaflet[grep("broad", names(plot.leaflet))], 
+                width = 40, 
+                transitionTime = 0) %>%
+  setView(mean(as.numeric(plot.leaflet$longitude_dd)),
+          mean(as.numeric(plot.leaflet$latitude_dd)), zoom = 12)
+
+# Leaflet plot of one habitat type ----
+hab.name <- 'Seagrasses'
 
 overzero <-  tidy.habitat %>%
   filter(habitat %in% hab.name & count > 0)
@@ -132,10 +164,11 @@ if (nrow(equalzero)) {
     addCircleMarkers(data = equalzero, lat = ~ latitude_dd, lng = ~ longitude_dd, radius = 2, fillOpacity = 0.5, color = "white", stroke = FALSE, label = ~ as.character(sample))}
 bubble.plot
 
+# Habitat types by depth ----
+plot.habitat <- tidy.habitat %>%
+  pivot_wider(names_from = "habitat", values_from = "count", names_prefix = "broad.") %>%
+  glimpse()
 
-library(tidyverse)
-
-# ---- 1. Select and reshape habitat columns ----
 df_long <- plot.habitat %>%
   dplyr::select (depth_m, starts_with("broad.")) %>%  # adjust if needed
   pivot_longer(
@@ -146,7 +179,6 @@ df_long <- plot.habitat %>%
   mutate(habitat = str_remove(habitat, "broad\\.")) %>%
   filter(count > 0)
 
-# ---- 2. Plot ----
 plot_alldata <- ggplot(df_long, aes(x = depth_m, weight = count)) +
   geom_histogram(binwidth = 5, colour = "black") +  # adjust binwidth as needed
   facet_wrap(~ habitat, scales = "free_y") +
@@ -159,37 +191,7 @@ plot_alldata <- ggplot(df_long, aes(x = depth_m, weight = count)) +
 
 plot_alldata
 
-# 3. 0-100m in depth
-
-df_long100 <- df_long %>%
-  filter(depth_m >= 0, depth_m <= 100)
-
-plot_100 <- ggplot(df_long100, aes(x = depth_m, weight = count)) +
-  geom_histogram(binwidth = 5, colour = "black") +  # adjust binwidth as needed
-  facet_wrap(~ habitat, scales = "free_y") +
-  labs(
-    x = "Depth (m)",
-    y = "Count",
-    title = "Depth distribution by habitat"
-  ) +
-  theme_minimal()
-
-plot_100
-
-# check for deep macroalgae or seagrasses
-deep_plants <- plot.habitat %>%
-  dplyr::select (sample, depth_m, starts_with("broad.")) %>%  # adjust if needed
-  pivot_longer(
-    cols = starts_with("broad."),
-    names_to = "habitat",
-    values_to = "count"
-  ) %>%
-  mutate(habitat = str_remove(habitat, "broad\\.")) %>%
-  filter(count > 0) %>%
-  filter(depth_m > 70, habitat %in% c("Macroalgae", "Seagrasses"))
-
-
-#histogram of all samples
+# Depth histogram of all samples ----
 ggplot(metadata, aes(x = depth_m)) +
   geom_histogram(binwidth = 5, colour = "black") +  # adjust binwidth as needed
   labs(
@@ -197,4 +199,3 @@ ggplot(metadata, aes(x = depth_m)) +
     y = "Count",
   ) +
   theme_minimal()
-
