@@ -67,7 +67,7 @@ p_seagrass <- ggplot() +
   #   data = bathy,
   #   aes(x = x, y = y, z = Depth),
   #   colour = "firebrick",
-  #   breaks = c(-2, -3, -5),
+  #   breaks = c(-1.5, -3.5, -5),
   #   linewidth = 0.5
   # ) +
   geom_sf(data = ausc, fill = "seashell2", colour = "black", linewidth = 0.2) +
