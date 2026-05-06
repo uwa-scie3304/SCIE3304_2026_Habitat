@@ -1,5 +1,3 @@
-# Model habitat data using the full subsets approach from @beckyfisher/FSSgam
-
 rm(list=ls())
 
 library(tidyverse)
