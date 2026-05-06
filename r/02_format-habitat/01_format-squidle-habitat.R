@@ -6,7 +6,7 @@
 # date:    April 2026
 ##
 
-# Clear obejcts from the environment
+# Clear objects from the environment
 rm(list = ls())
 # install.packages('remotes')
 # library('remotes')
@@ -22,7 +22,7 @@ library(CheckEM)
 
 # Load the schema file to get caab codes ----
 
-schema <- read.csv("data/raw/squidle-schema_20250325.csv") %>%
+schema <- read.csv("data/albany/raw/squidle-schema_20250325.csv") %>%
   dplyr::mutate(caab_code = as.character(vocab_registry.caab)) %>%
   dplyr::select(uuid, caab_code) %>%
   glimpse()
@@ -30,7 +30,7 @@ schema <- read.csv("data/raw/squidle-schema_20250325.csv") %>%
 # Download the data from Squidle 
 # Save the data in the data/raw/ folder, rename the file
 # Change the filename below to the new file (remember you can use tab to choose the file)
-raw_benthos <- read.csv("data/raw/2026-04_SCIE3304_HABITAT_BOSS_benthos.csv")
+raw_benthos <- read.csv("data/albany/raw/2026-04_SCIE3304_HABITAT_BOSS_benthos.csv")
 
 benthos <- raw_benthos %>%
   clean_names() %>%
@@ -50,12 +50,12 @@ benthos_missing <- benthos %>%
 
 benthos_clean <- benthos %>%
   dplyr::mutate(count = 1) %>%
-  group_by(campaignid, sample, caab_code, across(starts_with("level")), family, genus, species) %>%
+  group_by(campaignid, sample, caab_code, across(starts_with("level")), family, genus, species, tag_names) %>%
   dplyr::summarise(count = sum(count)) %>%
   ungroup() %>%
   glimpse()
 
-write.csv(benthos_clean, file = paste0("data/tidy/",
+write.csv(benthos_clean, file = paste0("data/albany/tidy/",
                                  unique(benthos_clean$campaignid),
-                                 "_benthos-count.csv"), # Change here for relief
+                                 "_benthos-count.csv"), 
           row.names = F)

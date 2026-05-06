@@ -15,13 +15,13 @@ library(leaflet.minicharts)
 library(here)
 
 # Read in metadata -----
-metadata <- read_csv("data/raw/SCIE3304 Metadata and labsheets - SCIE3304-2026_Metadata.csv") %>%
+metadata <- read_csv("data/albany/raw/SCIE3304 Metadata and labsheets - SCIE3304-2026_Metadata.csv") %>%
   dplyr::select(sample, longitude_dd, latitude_dd, date_time, location, site, depth_m) %>%
   dplyr::mutate(sample = paste0("2026-04_SCIE3304_HABITAT_BOSS_", sample)) %>%
   glimpse()
 
 # Read in habitat ----
-habitat_raw <- read_csv("data/tidy/2026-04_SCIE3304_HABITAT_BOSS_benthos-count.csv") 
+habitat_raw <- read_csv("data/albany/tidy/2026-04_SCIE3304_HABITAT_BOSS_benthos-count.csv") 
 
 # Have a look at the unique habitat types that are present
 unique(habitat_raw$level_2) # "Unscorable" "Seagrasses" "Macroalgae" "Substrate" 
