@@ -32,6 +32,7 @@ benthos <- read.csv(paste0("data/", area, "/tidy/2026-04_SCIE3304_HABITAT_BOSS_b
   mutate(sample = sub(".*_(\\d+)\\s*$", "\\1", sample)) %>%
   glimpse()
 
+# check how many samples
 length(unique(benthos$sample))
 
 saveRDS(benthos, paste0("data/", area, "/tidy/", area, "_benthos-count.RDS"))

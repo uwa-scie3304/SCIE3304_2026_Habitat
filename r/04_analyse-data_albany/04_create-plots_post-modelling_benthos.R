@@ -63,13 +63,13 @@ p_seagrass <- ggplot() +
     limits = c(0.12, 0.25),
     oob = scales::squish
   ) +
-  geom_contour(
-    data = bathy,
-    aes(x = x, y = y, z = Depth),
-    colour = "firebrick",
-    breaks = c(-2, -3, -5),
-    linewidth = 0.5
-  ) +
+  # geom_contour(
+  #   data = bathy,
+  #   aes(x = x, y = y, z = Depth),
+  #   colour = "firebrick",
+  #   breaks = c(-2, -3, -5),
+  #   linewidth = 0.5
+  # ) +
   geom_sf(data = ausc, fill = "seashell2", colour = "black", linewidth = 0.2) +
   coord_sf(
     xlim = prediction_limits[1:2],
