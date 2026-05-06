@@ -10,8 +10,6 @@ area <- "albany"
 library(tidyverse)
 library(terra)
 library(sf)
-library(tidyterra)
-library(scales)
 library(grid)
 library(viridis)
 

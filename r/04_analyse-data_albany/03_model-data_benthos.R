@@ -2,23 +2,17 @@
 
 rm(list=ls())
 
-library(CheckEM)
 library(tidyverse)
 library(mgcv)
-library(devtools)
-library(FSSgam)
-library(patchwork)
-library(foreach)
-library(doParallel)
 library(terra)
-library(sf)
+library(CheckEM)
+library(patchwork)
 
 # Set the study area
 area <- "albany"
 
 metadata_bathy_derivatives <- readRDS(paste0("data/", area, "/tidy/", area, "_metadata-bathymetry-derivatives.rds")) %>%
   mutate(sample = as.character(sample)) %>%
-  clean_names() %>%
   glimpse()
 
 # Bring in and format the data----
