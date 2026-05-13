@@ -20,8 +20,20 @@ habi <- readRDS(paste0("data/", area, "/tidy/", area, "_benthos-count.RDS")) %>%
   # dplyr::filter(!geoscience_roughness > 3) %>% # Filter outliers - check
   glimpse()
 
+habi_epi <- readRDS(paste0("data/", area, "/tidy/", area, "_benthos-count-with-tags.RDS")) %>%
+  left_join(metadata_bathy_derivatives, by = join_by(sample)) %>%
+  dplyr::filter(!is.na(geoscience_depth)) %>%
+  clean_names() %>%
+  glimpse()
+
 model_dat <- habi %>%
   pivot_longer(cols = c(Macroalgae, Sand, Rock, Reef, Seagrasses, Halophila, Posidonia),
+               names_to = "response", values_to = "number") %>%
+  select(campaignid, sample, response, number, geoscience_depth, geoscience_aspect, geoscience_roughness) %>%
+  glimpse()
+
+model_dat_epi <- habi_epi %>%
+  pivot_longer(cols = c(posidonia_with_epiphyte, posidonia_without_epiphyte),
                names_to = "response", values_to = "number") %>%
   select(campaignid, sample, response, number, geoscience_depth, geoscience_aspect, geoscience_roughness) %>%
   glimpse()
@@ -64,6 +76,19 @@ m_posidonia <- gam(cbind(Posidonia, total_pts - Posidonia) ~
                    data = habi, method = "REML", family = binomial("logit"))
 summary(m_posidonia)
 plot(m_posidonia)
+
+# Make one for Posidonia with epiphytes
+m_posidonia_epi <- gam(cbind(posidonia_with_epiphyte, total_pts - posidonia_with_epiphyte) ~
+                     s(geoscience_depth, k = 5, bs = "cr"), # discuss k
+                   data = habi_epi, method = "REML", family = binomial("logit"))
+summary(m_posidonia_epi)
+plot(m_posidonia_epi)
+
+m_posidonia_without_epi <- gam(cbind(posidonia_without_epiphyte, total_pts - posidonia_without_epiphyte) ~
+                         s(geoscience_depth, k = 5, bs = "cr"), # discuss k
+                       data = habi_epi, method = "REML", family = binomial("logit"))
+summary(m_posidonia_without_epi)
+plot(m_posidonia_without_epi)
 
 # Read predictor rasters to predict onto
 preds <- readRDS(paste0("data/", area, "/spatial/rasters/", area, "_bathymetry-derivatives.rds"))
@@ -138,6 +163,66 @@ writeRaster(
 
 # Halophila: predict, rasterise and plot
 predhab <- cbind(preddf, "p_halophila" = predict(m_halophila, preddf, type = "response", se.fit = T)) %>%
+  glimpse()
+
+prasts <- rast(predhab %>%
+                 dplyr::select(x, y, starts_with("p_")),
+               crs = "epsg:4326")
+
+plot(prasts)
+summary(prasts)
+
+# extract modeled habitat type
+pred_col <- grep("^p_.*\\.fit$", names(predhab), value = TRUE)
+habitat <- sub("^p_(.*)\\.fit$", "\\1", pred_col)[1]
+
+# dataframe
+saveRDS(
+  predhab,
+  paste0("output/model-output/", area, "/habitat/",
+         area, "_predicted-", habitat, ".rds")
+)
+
+# raster
+writeRaster(
+  prasts,
+  paste0("output/model-output/", area, "/habitat/",
+         area, "_predicted-", habitat, ".tif"),
+  overwrite = TRUE
+)
+
+# Posidonia with epiphytes: predict, rasterise and plot
+predhab <- cbind(preddf, "p_posidonia_epi" = predict(m_posidonia_epi, preddf, type = "response", se.fit = T)) %>%
+  glimpse()
+
+prasts <- rast(predhab %>%
+                 dplyr::select(x, y, starts_with("p_")),
+               crs = "epsg:4326")
+
+plot(prasts)
+summary(prasts)
+
+# extract modeled habitat type
+pred_col <- grep("^p_.*\\.fit$", names(predhab), value = TRUE)
+habitat <- sub("^p_(.*)\\.fit$", "\\1", pred_col)[1]
+
+# dataframe
+saveRDS(
+  predhab,
+  paste0("output/model-output/", area, "/habitat/",
+         area, "_predicted-", habitat, ".rds")
+)
+
+# raster
+writeRaster(
+  prasts,
+  paste0("output/model-output/", area, "/habitat/",
+         area, "_predicted-", habitat, ".tif"),
+  overwrite = TRUE
+)
+
+# Posidonia with epiphytes: predict, rasterise and plot
+predhab <- cbind(preddf, "p_posidonia_without_epi" = predict(m_posidonia_without_epi, preddf, type = "response", se.fit = T)) %>%
   glimpse()
 
 prasts <- rast(predhab %>%
