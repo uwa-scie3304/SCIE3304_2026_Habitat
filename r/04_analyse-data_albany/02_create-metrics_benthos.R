@@ -87,3 +87,26 @@ seagrass_with_epiphytes_tags <- read.csv(paste0("data/", area, "/tidy/2026-04_SC
 names(seagrass_with_epiphytes_tags) %>% sort()
 
 saveRDS(seagrass_with_epiphytes_tags, paste0("data/", area, "/tidy/", area, "_benthos-count-with-tags.RDS"))
+
+
+# Seagrass with and without epiphytes scatter piecharts ----
+metadata <- read_csv("data/albany/raw/SCIE3304 Metadata and labsheets - SCIE3304-2026_Metadata.csv") %>%
+  dplyr::select(sample, longitude_dd, latitude_dd, date_time, location, site, depth_m) %>%
+  dplyr::mutate(sample = paste0("2026-04_SCIE3304_HABITAT_BOSS_", sample)) %>%
+  mutate(sample = sub(".*_(\\d+)\\s*$", "\\1", sample)) %>%
+  glimpse()
+
+seagrass_pies <- seagrass_with_epiphytes_tags %>%
+  left_join(metadata)
+
+leaflet() %>%
+  addTiles(group = "Open Street Map") %>%
+  addProviderTiles('Esri.WorldImagery', group = "World Imagery") %>%
+  addLayersControl(baseGroups = c("World Imagery", "Open Street Map"), options = layersControlOptions(collapsed = FALSE)) %>%
+  addMinicharts(seagrass_pies$longitude_dd, seagrass_pies$latitude_dd, 
+                type = "pie", #colorPalette = cols_seagrasses, 
+                chartdata = seagrass_pies[grep("Seagrasses", names(seagrass_pies))], 
+                width = 40, 
+                transitionTime = 0) %>%
+  setView(mean(as.numeric(seagrass_pies$longitude_dd)),
+          mean(as.numeric(seagrass_pies$latitude_dd)), zoom = 12)

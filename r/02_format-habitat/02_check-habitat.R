@@ -199,3 +199,4 @@ ggplot(metadata, aes(x = depth_m)) +
     y = "Count",
   ) +
   theme_minimal()
+

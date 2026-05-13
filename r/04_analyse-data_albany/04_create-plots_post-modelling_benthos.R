@@ -108,3 +108,80 @@ ggsave(
   units = "in",
   bg = "white"
 )
+
+
+# Read prediction raster
+dat <- readRDS(
+  paste0(
+    "output/model-output/", area, "/habitat/",
+    area, "_predicted-posidonia.rds"
+  )
+)
+
+# Find seagrass prediction column
+pred_col <- if ("p_posidonia.fit" %in% names(dat)) {
+  "p_posidonia.fit"
+} else if ("posidonia" %in% names(dat)) {
+  "posidonia"
+} else {
+  names(dat)[!names(dat) %in% c("x", "y")][1]
+}
+
+# Build plot
+p_posidonia <- ggplot() +
+  geom_raster(
+    data = dat,
+    aes(x = x, y = y, fill = .data[[pred_col]])
+  ) +  scale_fill_viridis_c(
+    name = "Probability",
+    na.value = "transparent",
+    limits = c(0.12, 0.25),
+    oob = scales::squish
+  ) +
+  # geom_contour(
+  #   data = bathy,
+  #   aes(x = x, y = y, z = Depth),
+  #   colour = "firebrick",
+  #   breaks = c(-1.5, -3.5, -5),
+  #   linewidth = 0.5
+  # ) +
+  geom_sf(data = ausc, fill = "seashell2", colour = "black", linewidth = 0.2) +
+  coord_sf(
+    xlim = prediction_limits[1:2],
+    ylim = prediction_limits[3:4],
+    crs = 4326,
+    expand = FALSE
+  ) +
+  labs(
+    title = "Predicted posidonia habitat",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 11),
+    axis.text = element_text(size = 8),
+    axis.ticks = element_line(linewidth = 0.2),
+    panel.grid.major = element_line(linewidth = 0.2, colour = "grey85"),
+    panel.grid.minor = element_blank(),
+    legend.position = "right",
+    legend.title = element_text(size = 8),
+    legend.text = element_text(size = 7),
+    legend.key.height = unit(0.45, "cm"),
+    legend.key.width = unit(0.45, "cm")
+  )
+
+print(p_posidonia)
+
+ggsave(
+  filename = paste0(
+    "plots/", area, "/", area,
+    "_predicted-posidonia.png"
+  ),
+  plot = p_posidonia,
+  height = 5,
+  width = 6,
+  dpi = 900,
+  units = "in",
+  bg = "white"
+)
